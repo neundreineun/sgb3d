@@ -2,31 +2,43 @@
 <html lang="de">
 <head>
     <meta charset="utf-8">
-    <title>Digitaler Brückberg HD - 0.25m Simulation</title>
+    <title>Siegburg Brückberg 3D</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.110/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: sans-serif; }
         #cesiumContainer { width: 100%; height: 100vh; }
-        
-        /* Stylisches Glas-Design für das UI */
-        #ui-panel {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(15, 15, 15, 0.9);
-            color: #00ffcc; padding: 20px; border-radius: 12px;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            border: 1px solid rgba(0, 255, 204, 0.3);
-            z-index: 10; width: 280px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        }
-        h3 { margin: 0 0 10px 0; font-weight: 300; letter-spacing: 1px; }
-        .stats { color: #888; font-size: 0.85em; margin-bottom: 15px; }
-        .control-group { margin: 12px 0; font-size: 0.9em; color: #eee; }
-        hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
-        input[type="range"] { width: 100%; accent-color: #00ffcc; }
-        #analysis { font-family: monospace; font-size: 0.9em; color: #00ffcc; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; }
+        #ui-panel { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.85); color: #00ffcc; padding: 15px; border-radius: 10px; border: 1px solid #00ffcc; z-index: 100; width: 260px; }
+        .btn-rain { width: 100%; background: #0077ff; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        #loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 4px solid #333; border-top: 4px solid #00ffcc; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; z-index: 1000; }
+        @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
     </style>
 </head>
 <body>
-
-<div
+    <div id="loader"></div>
+    <div id="ui-panel">
+        <h3 style="margin:0;">BRÜCKBERG HD</h3>
+        <p style="font-size:0.8em; color:#888;">LIDAR Precision: 0.25m</p>
+        <hr style="border:0.5px solid #333;">
+        <label><input type="checkbox" id="l-dop" checked> Luftbild HD</label><br>
+        <label><input type="checkbox" id="l-trees" checked> Wald-Modell</label>
+        <button class="btn-rain" onclick="startRain()">🌧 Regen-Simulation</button>
+        <div id="info" style="margin-top:10px; font-size:0.8em;">Klicke Gelände...</div>
+    </div>
+    <div id="cesiumContainer"></div>
+<script>
+    Cesium.Ion.defaultAccessToken = 'DEIN_CESIUM_ION_TOKEN'; // <--- TOKEN HIER REIN!
+    const viewer = new Cesium.Viewer('cesiumContainer', { terrainProvider: Cesium.createWorldTerrain(), baseLayerPicker: false, infoBox: false });
+    const dop = viewer.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider({ url: 'https://www.wms.nrw.de/geobasis/wms_nw_dop', layers: 'nw_dop_rgb' }));
+    const trees = viewer.scene.primitives.add(new Cesium.BillboardCollection());
+    for(let i=0; i<150; i++) { trees.add({ position: Cesium.Cartesian3.fromDegrees(7.234 + Math.random()*0.005, 50.801 + Math.random()*0.005), image: 'https://img.icons8.com/color/48/tree.png', verticalOrigin: Cesium.VerticalOrigin.BOTTOM, distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3000) }); }
+    const drops = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+    function startRain() { for(let i=0; i<100; i++) { const p = drops.add({ position: Cesium.Cartesian3.fromDegrees(7.235, 50.803, 180), color: Cesium.Color.CYAN, pixelSize: 3 }); animateDrop(p); } }
+    function animateDrop(p) { let pos = Cesium.Cartographic.fromCartesian(p.position); let int = setInterval(() => { pos.latitude -= 0.000005; pos.longitude += 0.000002; p.position = Cesium.Cartesian3.fromRadians(pos.longitude, pos.latitude, pos.height); }, 30); setTimeout(() => { clearInterval(int); drops.remove(p); }, 4000); }
+    document.getElementById('l-dop').onchange = (e) => dop.show = e.target.checked;
+    document.getElementById('l-trees').onchange = (e) => trees.show = e.target.checked;
+    viewer.scene.globe.tileLoadProgressEvent.addEventListener((q) => { if(q === 0) document.getElementById('loader').style.display='none'; });
+    viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(7.234, 50.801, 800), orientation: { pitch: Cesium.Math.toRadians(-30) } });
+</script>
+</body>
+</html>
